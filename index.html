@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCLK Aware Adaptive Voltage Calculator</title>
+    <style>
+        :root { --primary: #0071c5; --bg: #f0f2f5; --accent: #d35400; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+        h2 { color: var(--primary); text-align: center; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 15px; font-size: 1.3rem; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .full-width { grid-column: span 2; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; font-size: 0.85rem; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; transition: border-color 0.3s; }
+        input:focus { border-color: var(--primary); outline: none; }
+        button { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,113,197,0.2); }
+        button:hover { background-color: #005a9e; }
+        .result-section { margin-top: 25px; display: none; border-top: 2px dashed #eee; padding-top: 20px; }
+        .res-box { background: #fff8f1; border-left: 5px solid var(--accent); padding: 15px; border-radius: 4px; margin-bottom: 15px; }
+        .bios-list { font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; line-height: 1.6; }
+        .highlight { color: #fab1a0; font-weight: bold; }
+        .actual-val { color: var(--accent); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>BCLK Aware Adaptive Voltage Calculator</h2>
+    
+    <div class="input-row">
+        <div class="full-width">
+            <label>1. 設定 BCLK (外頻)</label>
+            <input type="number" id="bclk" value="120" step="0.1">
+        </div>
+        <div>
+            <label>2. P-Core Turbo Speed (MHz)</label>
+            <input type="number" id="pTarget" value="5500">
+        </div>
+        <div>
+            <label>3. E-Core Turbo Speed (MHz) </label>
+            <input type="number" id="eTarget" value="4800">
+        </div>
+    </div>
+
+    <button onclick="calculate()">立即計算 BIOS 設定</button>
+
+    <div id="result" class="result-section">
+        <div class="res-box">
+            <strong>計算結果 (確保大於目標頻率)：</strong><br>
+            P-Core: <span id="pRes" class="actual-val"></span> (實際 <span id="pAct"></span> MHz)<br>
+            E-Core: <span id="eRes" class="actual-val"></span> (實際 <span id="eAct"></span> MHz)
+        </div>
+        
+        <label>BIOS 設定參考值：</label>
+        <div class="bios-list" id="biosSummary">
+            </div>
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        const bclk = parseFloat(document.getElementById('bclk').value);
+        const pt = parseFloat(document.getElementById('pTarget').value);
+        const et = parseFloat(document.getElementById('eTarget').value);
+
+        if (!bclk || !pt || !et) return alert("請填入完整數值");
+
+        /**
+         * 嚴格大於邏輯：
+         * 使用 Math.floor(Target / BCLK) + 1 
+         * 範例：4800 / 120 = 40 -> 40 + 1 = 41 (實際 4920)
+         */
+        const pRatio = Math.floor(pt / bclk) + 1;
+        const eRatio = Math.floor(et / bclk) + 1;
+        
+        const pActual = (pRatio * bclk).toFixed(1);
+        const eActual = (eRatio * bclk).toFixed(1);
+
+        document.getElementById('pRes').innerText = `倍頻設為 ${pRatio}`;
+        document.getElementById('pAct').innerText = pActual;
+        document.getElementById('eRes').innerText = `倍頻設為 ${eRatio}`;
+        document.getElementById('eAct').innerText = eActual;
+
+        document.getElementById('biosSummary').innerHTML = `
+            > CPU BCLK Frequency: <span class="highlight">${bclk}</span><br>
+            > Performance Core Ratio: <span class="highlight">Sync All Cores</span><br>
+            > All Core Ratio Limit: <span class="highlight">${pRatio}</span><br>
+            > Efficient Core Ratio: <span class="highlight">Sync All Cores</span><br>
+            > All Core Ratio Limit: <span class="highlight">${eRatio}</span><br>
+            > TVB Voltage Optimization: <span class="highlight">Disable</span><br>
+            > BCLK Aware Adaptive Voltage: <span class="highlight">Enabled</span><br>
+            > Core DLVR Voltage: <span class="highlight">Adaptive Mode</span><br>
+            > Additional Turbo Voltage: <span class="highlight">1.30V</span>
+        `;
+
+        document.getElementById('result').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
